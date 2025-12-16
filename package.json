@@ -1,6 +1,7 @@
 {
   "name": "vite-react-typescript-starter",
-  "homepage": "https://YOUR_USERNAME.github.io/pneumonia-detector",
+  "homepage": "https://zanyarhajiesmaipoor.github.io/pneumonia_detection",
+  
   "private": true,
   "version": "0.0.0",
   "type": "module",

@@ -1,12 +1,27 @@
 import * as ort from 'onnxruntime-web';
 
+// Configure WASM paths for ONNX Runtime
+ort.env.wasm.wasmPaths = import.meta.env.BASE_URL;
+
 let session: ort.InferenceSession | null = null;
 
 export const loadModel = async () => {
   if (session) return session;
 
   try {
-    session = await ort.InferenceSession.create('/pneumonia_model.onnx');
+    // Use BASE_URL - automatically handles both dev and production
+    const modelPath = `${import.meta.env.BASE_URL}pneumonia_model.onnx`;
+    
+    console.log('Loading model from:', modelPath);
+    
+    session = await ort.InferenceSession.create(modelPath, {
+      executionProviders: ['wasm'],
+    });
+    
+    console.log('✓ Model loaded successfully!');
+    console.log('Input names:', session.inputNames);
+    console.log('Output names:', session.outputNames);
+    
     return session;
   } catch (error) {
     console.error('Failed to load ONNX model:', error);
@@ -28,15 +43,19 @@ export const runInference = async (preprocessedData: Float32Array): Promise<{ la
   const feeds: Record<string, ort.Tensor> = {};
   feeds[session.inputNames[0]] = tensor;
 
+  console.log('Running inference...');
   const results = await session.run(feeds);
   const output = results[session.outputNames[0]];
 
   const outputData = output.data as Float32Array;
+  console.log('Raw model output:', outputData);
 
-  const pneumoniaIndex = outputData[1] > outputData[0] ? 1 : 0;
-  const confidence = pneumoniaIndex === 1 ? outputData[1] : outputData[0];
-
+  // Apply softmax to get probabilities
   const probabilities = softmax(Array.from(outputData));
+  console.log('Probabilities after softmax:', probabilities);
+
+  // Assuming class 0 is Normal, class 1 is Pneumonia
+  const pneumoniaIndex = probabilities[1] > probabilities[0] ? 1 : 0;
   const finalConfidence = probabilities[pneumoniaIndex];
 
   return {
